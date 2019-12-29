@@ -1,0 +1,12 @@
+{
+  "main": "index.jsx",
+  "dependencies": {
+    "@antv/graphin": "latest",
+    "gun": "0.2019.1211",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "keywords": [],
+  "name": "lmangani-gundb-graphin",
+  "description": "GunDB Graph Navigation"
+}

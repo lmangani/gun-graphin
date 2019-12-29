@@ -1,0 +1,22 @@
+{
+  "main": "index.jsx",
+  "dependencies": {
+    "@antv/graphin": "latest",
+    "gun": "0.2019.1211",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "keywords": [],
+  "name": "lmangani-gundb-graphin",
+  "description": "GunDB Graph Navigation",
+  "version": "0.0.0",
+  "devDependencies": {
+    "react-scripts": "1.0.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
