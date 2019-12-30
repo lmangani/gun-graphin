@@ -43,7 +43,7 @@ g.get("rtpengine")
   .put(g.get("homer"));
 
 var graph = { nodes: [], edges: [] };
-var layout = "concentric"; // forced,
+var layout = "grid"; // forced,grid
 window.data = undefined;
 
 const App = () => {
@@ -69,7 +69,6 @@ const App = () => {
       console.log("expand set", selected);
       if (selected && selected.data) {
         var id = selected.data.id;
-        console.log(id);
         DFS.search(id, "name");
       }
       setState({
@@ -89,7 +88,8 @@ const App = () => {
     DFS.search(state.soul, "name");
     setState({
       ...state,
-      data: window.data
+      data: window.data,
+      soul: state.soul
     });
   };
   window.onReset = onReset;
@@ -98,7 +98,6 @@ const App = () => {
     console.log("expand set", selected);
     if (selected[0] && selected[0].data) {
       var id = selected[0].data.id;
-      console.log(id);
       DFS.search(id, "name");
     }
     setState({
@@ -111,14 +110,20 @@ const App = () => {
       ...state,
       soul: e.target.value
     });
+    DFS.search(state.soul, "name");
+  };
+  const onKeyPress = e => {
+    if (e.key === "Enter") {
+      onReset();
+    }
   };
   return (
     <div className="App">
       <Button onClick={onReset} type="primary">
-        reset
+        Gun
       </Button>
       &nbsp;
-      <input value={state.soul} onChange={onEdit} />
+      <input value={state.soul} onChange={onEdit} onKeyDown={onKeyPress} />
       <Graphin data={window.data} layout={{ name: layout }} ref={graphRef} />
     </div>
   );
@@ -237,11 +242,22 @@ var DFS = (function() {
     stack = [];
     nodes = new Map();
     edges = new Map();
-    gun.get(soul).once(dfs.node);
+    var dots = soul.split(".");
+    if (dots.length > 1) {
+      console.log("nested scan");
+      var nest = gun;
+      var i;
+      for (i = 0; i < dots.length - 1; i++) {
+        nest = nest.get(dots[i]);
+      }
+      nest.get(dots.slice(-1)[0]).once(dfs.node);
+    } else {
+      gun.get(soul).once(dfs.node);
+    }
   };
 
   dfs.node = function(node, key) {
-    //console.log('called', key, nodes.size);
+    //console.log("called", key, nodes.size);
     if (!node) {
       console.error("no data:", key, node);
       dfs.back();
@@ -335,4 +351,3 @@ var DFS = (function() {
 })(Gun, gun, graph, update);
 
 DFS.search(gunRoot, "name");
-
