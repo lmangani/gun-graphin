@@ -2,12 +2,13 @@
   "main": "index.jsx",
   "dependencies": {
     "@antv/graphin": "latest",
+    "@antv/graphin-components": "1.0.2",
     "antd": "3.26.5",
     "gun": "0.2019.1211",
     "react": "latest",
     "react-dom": "latest"
   },
   "keywords": [],
-  "name": "lmangani-gundb-graphin",
-  "description": "GunDB Graph Navigation"
+  "name": "lmangani-gundb-graphin-remote",
+  "description": "GunDB + Graphin Demo by QXIP"
 }

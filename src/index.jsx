@@ -5,46 +5,55 @@ import ReactDOM from "react-dom";
 import Gun from "gun";
 import Graphin, { Utils } from "@antv/graphin";
 import { Button } from "antd";
+import { Toolbar, ContextMenu } from "@antv/graphin-components";
+import LayoutSelector from "./layout_selector";
 import "antd/dist/antd.css";
 import "@antv/graphin/dist/index.css";
+import "@antv/graphin-components/dist/index.css";
+//import { SimpleConsole } from "./simple-console";
+//import "./simple-console.css";
 
 /* initialize GunDB */
 var gun = Gun();
 window.gun = gun;
-var gunRoot = "root";
+var gunRoot = "graphin";
 
 /* Feed some data */
+localStorage.clear();
 var g = gun.get(gunRoot).put({ name: "root", type: "none" });
-g.get("ua").put({ name: "SIP Caller", type: "phone" });
-g.get("opensips").put({ name: "OpenSIPS" });
-g.get("asterisk").put({ name: "Asterisk" });
-g.get("rtpengine").put({ name: "RTP:Engine" });
-g.get("homer").put({ name: "HOMER" });
-g.get("ua")
-  .get("sip")
-  .put(g.get("opensips"));
-g.get("ua")
-  .get("rtp")
-  .put(g.get("rtpengine"));
-g.get("opensips")
-  .get("sip")
-  .put(g.get("asterisk"));
-g.get("rtpengine")
-  .get("rtp")
-  .put(g.get("asterisk"));
-g.get("opensips")
-  .get("hep-sip")
-  .put(g.get("homer"));
-g.get("asterisk")
-  .get("hep-sip")
-  .put(g.get("homer"));
-g.get("rtpengine")
-  .get("hep-rtcp")
-  .put(g.get("homer"));
+window.samples = function() {
+  g.get("ua").put({ name: "SIP Caller", type: "phone" });
+  g.get("opensips").put({ name: "OpenSIPS" });
+  g.get("asterisk").put({ name: "Asterisk" });
+  g.get("rtpengine").put({ name: "RTP:Engine" });
+  g.get("homer").put({ name: "HOMER" });
+  g.get("ua")
+    .get("sip")
+    .put(g.get("opensips"));
+  g.get("ua")
+    .get("rtp")
+    .put(g.get("rtpengine"));
+  g.get("opensips")
+    .get("sip")
+    .put(g.get("asterisk"));
+  g.get("rtpengine")
+    .get("rtp")
+    .put(g.get("asterisk"));
+  g.get("opensips")
+    .get("hep-sip")
+    .put(g.get("homer"));
+  g.get("asterisk")
+    .get("hep-sip")
+    .put(g.get("homer"));
+  g.get("rtpengine")
+    .get("hep-rtcp")
+    .put(g.get("homer"));
+};
+samples();
 
 var graph = { nodes: [], edges: [] };
-var layout = "grid"; // forced,grid
 window.data = undefined;
+window.lastNode;
 
 const App = () => {
   const [state, setState] = React.useState({
@@ -60,22 +69,34 @@ const App = () => {
     const { graph } = graphRef.current;
     const onNodeClick = e => {
       var selected = e.item.get("model");
-      console.log("Selected", selected, window.backup);
       setState({
         ...state,
         selected: selected
       });
-
+      console.log("Node Selected", selected, window.lastNode);
       console.log("expand set", selected);
       if (selected && selected.data) {
         var id = selected.data.id;
-        DFS.search(id, "name");
+        if (id === window.lastNode) {
+          onReset();
+          return;
+          window.lastNode = null;
+        } else {
+          window.lastNode = id;
+          console.log(id);
+          DFS.search(id, "name");
+        }
       }
       setState({
         ...state,
         data: window.data
       });
     };
+    const onEdgeClick = e => {
+      var selected = e.item.get("model");
+      console.log("Edge Selected", selected, window.backup);
+    };
+    graph.on("edge:dbclick", onEdgeClick);
     graph.on("node:dblclick", onNodeClick);
     return () => {
       graph.off("node:dblclick", onNodeClick);
@@ -98,6 +119,7 @@ const App = () => {
     console.log("expand set", selected);
     if (selected[0] && selected[0].data) {
       var id = selected[0].data.id;
+      console.log(id);
       DFS.search(id, "name");
     }
     setState({
@@ -117,6 +139,19 @@ const App = () => {
       onReset();
     }
   };
+  const context_options = [
+    {
+      key: "invertSelect",
+      title: "Reset",
+      iconType: "select",
+      visible: true,
+      onClick: () => {
+        onReset();
+      }
+    }
+  ];
+
+  const [layout, changeLayout] = React.useState({ name: "grid", options: {} });
   return (
     <div className="App">
       <Button onClick={onReset} type="primary">
@@ -124,7 +159,19 @@ const App = () => {
       </Button>
       &nbsp;
       <input value={state.soul} onChange={onEdit} onKeyDown={onKeyPress} />
-      <Graphin data={window.data} layout={{ name: layout }} ref={graphRef} />
+      <Graphin data={window.data} layout={layout} ref={graphRef}>
+        <Toolbar direction="vertical" />
+        <ContextMenu options={context_options} />
+        <LayoutSelector
+          value={layout.name}
+          onChange={value => {
+            changeLayout({
+              ...layout,
+              name: value
+            });
+          }}
+        />
+      </Graphin>
     </div>
   );
 };
@@ -303,6 +350,8 @@ var DFS = (function() {
           var temp = node[item];
           break;
         }
+      } else {
+        //console.log("skip", node[item]);
       }
     }
     if (temp) {
@@ -320,7 +369,12 @@ var DFS = (function() {
     var soul = v["#"];
     var tmp = { source: edgeS, target: edgeT, properties: [] };
     nodes.set(soul, { id: soul, label: v["#"] });
-    edges.set(edgeS + edgeT, { source: edgeS, target: edgeT, data: tmp });
+    edges.set(edgeS + edgeT, {
+      source: edgeS,
+      target: edgeT,
+      data: tmp
+      //label: tLabel
+    });
     stack.push(soul);
     u = v;
     if (nodes.size >= limit) {
@@ -351,3 +405,7 @@ var DFS = (function() {
 })(Gun, gun, graph, update);
 
 DFS.search(gunRoot, "name");
+
+//var ttt = dfs.default;
+//var Controller = ttt(Gun, gun, graph, update);
+//Controller.search("root", "name");
