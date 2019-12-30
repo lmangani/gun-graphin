@@ -2,17 +2,20 @@
 
 import React from "react";
 import ReactDOM from "react-dom";
-import Graphin from "@antv/graphin";
-import "@antv/graphin/dist/index.css"; // 引入Graphin CSS
 import Gun from "gun";
+import Graphin, { Utils } from "@antv/graphin";
+import { Button } from "antd";
+import "antd/dist/antd.css";
+import "@antv/graphin/dist/index.css";
 
 /* initialize GunDB */
 var gun = Gun();
 window.gun = gun;
+var gunRoot = "root";
 
 /* Feed some data */
-var g = gun.get("root").put({ name: "root", type: "none" });
-g.get("ua").put({ name: "SIP User-Agent", type: "phone" });
+var g = gun.get(gunRoot).put({ name: "root", type: "none" });
+g.get("ua").put({ name: "SIP Caller", type: "phone" });
 g.get("opensips").put({ name: "OpenSIPS" });
 g.get("asterisk").put({ name: "Asterisk" });
 g.get("rtpengine").put({ name: "RTP:Engine" });
@@ -38,48 +41,131 @@ g.get("asterisk")
 g.get("rtpengine")
   .get("hep-rtcp")
   .put(g.get("homer"));
-var graph = {};
-window.graph = graph;
 
-/*
-let local = window.sessionStorage.getItem('peers')
-  if(local) {
-    var def = local;
-  } else {
-    var def = '"http://localhost:8080/gun"';
-  }
-  var peers = window.prompt('Please specify the IP of the peer you want to inspect:', def);
-  sessionStorage.setItem('peers', peers);
-  peers = JSON.parse(peers);
-  */
-
-var data;
+var graph = { nodes: [], edges: [] };
+var layout = "concentric"; // forced,
+window.data = undefined;
 
 const App = () => {
+  const [state, setState] = React.useState({
+    selected: [],
+    data: window.data,
+    soul: gunRoot
+  });
+
+  const { data, selected } = state;
+  const graphRef = React.createRef(null);
+
+  React.useEffect(() => {
+    const { graph } = graphRef.current;
+    const onNodeClick = e => {
+      var selected = e.item.get("model");
+      console.log("Selected", selected, window.backup);
+      setState({
+        ...state,
+        selected: selected
+      });
+
+      console.log("expand set", selected);
+      if (selected && selected.data) {
+        var id = selected.data.id;
+        console.log(id);
+        DFS.search(id, "name");
+      }
+      setState({
+        ...state,
+        data: window.data
+      });
+    };
+    graph.on("node:dblclick", onNodeClick);
+    return () => {
+      graph.off("node:dblclick", onNodeClick);
+    };
+  }, [state]);
+
+  const onReset = () => {
+    console.log("reset", state.soul);
+    window.data = undefined;
+    DFS.search(state.soul, "name");
+    setState({
+      ...state,
+      data: window.data
+    });
+  };
+  window.onReset = onReset;
+
+  const onExpand = () => {
+    console.log("expand set", selected);
+    if (selected[0] && selected[0].data) {
+      var id = selected[0].data.id;
+      console.log(id);
+      DFS.search(id, "name");
+    }
+    setState({
+      ...state,
+      data: window.data
+    });
+  };
+  const onEdit = e => {
+    setState({
+      ...state,
+      soul: e.target.value
+    });
+  };
   return (
-    <div>
-      <Graphin data={data} />
+    <div className="App">
+      <Button onClick={onReset} type="primary">
+        reset
+      </Button>
+      &nbsp;
+      <input value={state.soul} onChange={onEdit} />
+      <Graphin data={window.data} layout={{ name: layout }} ref={graphRef} />
     </div>
   );
 };
+// eslint-disable-next-line no-undef
 const rootElement = document.getElementById("container");
+
 ReactDOM.render(<App />, rootElement);
 
 /* Depth First Search - explore all of the nodes from the given Soul
  * then update D3 data and the force-layout from the html
  */
 
-function update() {
-  console.log("updating...");
-  data = graph;
+function update(new_graph) {
+  if (!window.data || window.data.length < 1) {
+    // create
+    console.log("fresh graph...", new_graph);
+    window.data = new_graph;
+  } else {
+    // update
+    const nodes = [
+      ...window.data.nodes
+        .concat(new_graph.nodes)
+        .reduce(
+          (m, o) => m.set(o.id, Object.assign(m.get(o.id) || {}, o)),
+          new Map()
+        )
+        .values()
+    ];
+    const edges = [
+      ...window.data.edges
+        .concat(new_graph.edges)
+        .reduce(
+          (m, o) =>
+            m.set(
+              o.source + o.target,
+              Object.assign(m.get(o.source + o.target) || {}, o)
+            ),
+          new Map()
+        )
+        .values()
+    ];
+    window.data = { nodes, edges };
+    console.log("updating...", window.data);
+  }
   ReactDOM.render(<App />, rootElement);
 }
-
-const defaultOptions = {
-  /** 节点 */
-  nodeCount: 10,
-  nodeType: "company"
-};
 
 var DFS = (function() {
   var stack;
@@ -241,11 +327,12 @@ var DFS = (function() {
   dfs.render = function() {
     graph.nodes = util.makeNodes(nodes);
     graph.edges = util.makeEdges(edges);
-    console.log("Rendering", graph);
-    update();
+    console.log("Got Data!", graph);
+    update(graph);
   };
 
   return dfs;
 })(Gun, gun, graph, update);
 
-var test = DFS.search("root", "name");
+DFS.search(gunRoot, "name");
+
