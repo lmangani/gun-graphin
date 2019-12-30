@@ -2,6 +2,7 @@
   "main": "index.jsx",
   "dependencies": {
     "@antv/graphin": "latest",
+    "antd": "3.26.5",
     "gun": "0.2019.1211",
     "react": "latest",
     "react-dom": "latest"
