@@ -13,15 +13,16 @@ import "@antv/graphin-components/dist/index.css";
 //import { SimpleConsole } from "./simple-console";
 //import "./simple-console.css";
 
-/* initialize GunDB */
-var gun = Gun();
-window.gun = gun;
-var gunRoot = "graphin";
+/* Ger URL Parameters for server, root */
+const search = window.location.search;
+const params = new URLSearchParams(search);
+const param_server = params.get("server");
+const param_root = params.get("root");
 
-/* Feed some data */
+/* Optional Sample data */
 localStorage.clear();
-var g = gun.get(gunRoot).put({ name: "root", type: "none" });
 window.samples = function() {
+  var g = gun.get(gunRoot).put({ name: "root", type: "none" });
   g.get("ua").put({ name: "SIP Caller", type: "phone" });
   g.get("opensips").put({ name: "OpenSIPS" });
   g.get("asterisk").put({ name: "Asterisk" });
@@ -49,7 +50,22 @@ window.samples = function() {
     .get("hep-rtcp")
     .put(g.get("homer"));
 };
-samples();
+
+/* initialize GunDB */
+if (param_server) {
+  var gun = Gun(param_server);
+  window.gun = gun;
+} else {
+  var gun = Gun();
+  window.gun = gun;
+  samples();
+}
+if (param_root) {
+  var gunRoot = param_root;
+} else {
+  var gunRoot = "graphin";
+  samples();
+}
 
 var graph = { nodes: [], edges: [] };
 window.data = undefined;
